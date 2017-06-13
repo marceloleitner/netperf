@@ -98,11 +98,13 @@ static int
   msg_count = 0,	/* number of messages to transmit on association */
   non_block = 0,	/* default to blocking sockets */
   unordered = 0,	/* default to ordered delivering */
+  track_path_info = 0,	/* track SRTT on primary transport */
   num_associations = 1; /* number of associations on the endpoint */
 
 static  int confidence_iteration;
 static  char  local_cpu_method;
 static  char  remote_cpu_method;
+static  unsigned int max_srtt;
 
 #ifdef WANT_HISTOGRAM
 static HIST time_hist;
@@ -131,6 +133,7 @@ SCTP Sockets Test Options:\n\
     -4                Use AF_INET (eg IPv4) on both ends of the data conn\n\
     -6                Use AF_INET6 (eg IPv6) on both ends of the data conn\n\
     -U                Use unordered delivery\n\
+    -l number         Track path info on primary transport at every number messages\n\
 \n\
 For those options taking two parms, at least one must be specified;\n\
 specifying one value without a comma will set both parms to that\n\
@@ -407,6 +410,10 @@ Size (bytes)\n\
   struct	sctp_stream_request_struct	*sctp_stream_request;
   struct	sctp_stream_response_struct	*sctp_stream_response;
   struct	sctp_stream_results_struct	*sctp_stream_result;
+
+  struct sctp_paddrinfo pinfo;
+  socklen_t optlen = sizeof(pinfo);
+  pinfo.spinfo_assoc_id = 0;
   
   sctp_stream_request  = 
     (struct sctp_stream_request_struct *)netperf_request.content.test_specific_data;
@@ -604,6 +611,7 @@ Size (bytes)\n\
     }
     
     /*Connect up to the remote port on the data socket  */
+    memcpy(&pinfo.spinfo_address, remote_res->ai_addr, remote_res->ai_addrlen);
     if (connect(send_socket, 
 		remote_res->ai_addr,
 		remote_res->ai_addrlen) == INVALID_SOCKET) {
@@ -758,6 +766,21 @@ Size (bytes)\n\
 	interval_count = interval_burst;
       }
 #endif /* WANT_INTERVALS */
+
+      if (track_path_info && !(nummessages % track_path_info)) {
+        len = getsockopt(send_socket, SOL_SCTP, SCTP_GET_PEER_ADDR_INFO,
+			 &pinfo, &optlen);
+        if (len < 0) {
+	  perror("getsockopt");
+        } else {
+	  fprintf(where, "srtt:%u rto:%u cwnd:%u\n",
+		  pinfo.spinfo_srtt, pinfo.spinfo_rto,
+		  pinfo.spinfo_cwnd);
+	  if (pinfo.spinfo_srtt > max_srtt)
+	    max_srtt = pinfo.spinfo_srtt;
+        }
+      }
+
       
       /* now we want to move our pointer to the next position in the */
       /* data buffer...we may also want to wrap back to the "beginning" */
@@ -999,6 +1022,9 @@ Size (bytes)\n\
 	      thruput);/* how fast did it go */
       break;
     }
+  }
+  if (track_path_info) {
+    fprintf(where, "Maximum SRTT: %u ms\n", max_srtt);
   }
   
   /* it would be a good thing to include information about some of the */
@@ -4673,7 +4699,7 @@ void
 scan_sctp_args( int argc, char *argv[] )
 {
 
-#define SOCKETS_ARGS "BDhH:I:L:m:M:P:r:s:S:VN:T:46U"
+#define SOCKETS_ARGS "BDhH:I:L:m:M:P:r:s:S:VN:T:46Ul:"
 
   extern char	*optarg;	  /* pointer to option string	*/
   
@@ -4850,6 +4876,13 @@ scan_sctp_args( int argc, char *argv[] )
       break;
     case 'U':
       unordered = SCTP_UNORDERED;
+      break;
+    case 'l':
+      track_path_info = atoi(optarg);
+      if (track_path_info < 1) {
+	  printf("Number of messages for peer path tracking must be >= 1\n");
+	  exit(1);
+      }
       break;
     };
   }
