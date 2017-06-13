@@ -97,6 +97,7 @@ extern int first_burst_size;
 static int	
   msg_count = 0,	/* number of messages to transmit on association */
   non_block = 0,	/* default to blocking sockets */
+  unordered = 0,	/* default to ordered delivering */
   num_associations = 1; /* number of associations on the endpoint */
 
 static  int confidence_iteration;
@@ -129,6 +130,7 @@ SCTP Sockets Test Options:\n\
     -T number	      Number of associations to create (_MANY tests)\n\
     -4                Use AF_INET (eg IPv4) on both ends of the data conn\n\
     -6                Use AF_INET6 (eg IPv6) on both ends of the data conn\n\
+    -U                Use unordered delivery\n\
 \n\
 For those options taking two parms, at least one must be specified;\n\
 specifying one value without a comma will set both parms to that\n\
@@ -552,6 +554,7 @@ Size (bytes)\n\
     sctp_stream_request->port		=	htonl(atoi(remote_data_port));
     sctp_stream_request->ipfamily	=	af_to_nf(remote_res->ai_family);
     sctp_stream_request->non_blocking   =	non_block;
+    sctp_stream_request->unordered	=	unordered;
     
     
     if (debug > 1) {
@@ -712,7 +715,7 @@ Size (bytes)\n\
       while ((len=sctp_sendmsg(send_socket,
 			       send_ring->buffer_ptr, send_size,
 			       NULL, 0,
-			       0, 0, 0, 0, 0)) != send_size) {
+			       0, unordered, 0, 0, 0)) != send_size) {
 	if (non_block && errno == EAGAIN)
 	    continue;
 	else if ((len >=0) || SOCKET_EINTR(len)) {
@@ -1145,6 +1148,7 @@ recv_sctp_stream( void )
   loc_rcvavoid = sctp_stream_request->so_rcvavoid;
   loc_sndavoid = sctp_stream_request->so_sndavoid;
   non_block = sctp_stream_request->non_blocking;
+  unordered = sctp_stream_request->unordered;
 
   set_hostname_and_port(local_name,
 			port_buffer,
@@ -1675,6 +1679,7 @@ Size (bytes)\n\
     sctp_stream_request->port		= 	(atoi(remote_data_port));
     sctp_stream_request->ipfamily	=	af_to_nf(remote_res->ai_family);
     sctp_stream_request->non_blocking   =	non_block;
+    sctp_stream_request->unordered	=	unordered;
     
     
     if (debug > 1) {
@@ -1854,7 +1859,7 @@ Size (bytes)\n\
 			       send_size,
 			       (struct sockaddr *)remote_res->ai_addr,
 			       remote_res->ai_addrlen,
-			       0, 0, 0, 0, 0)) != send_size) {
+			       0, unordered, 0, 0, 0)) != send_size) {
 	    if ((len >=0) || SOCKET_EINTR(len)) {
 	      /* the test was interrupted, must be the end of test */
 	      timed_out = 1;
@@ -2301,6 +2306,7 @@ recv_sctp_stream_1toMany( void )
   loc_rcvavoid = sctp_stream_request->so_rcvavoid;
   loc_sndavoid = sctp_stream_request->so_sndavoid;
   non_block = sctp_stream_request->non_blocking;
+  unordered = sctp_stream_request->unordered;
 
   set_hostname_and_port(local_name,
 			port_buffer,
@@ -2760,6 +2766,7 @@ Send   Recv    Send   Recv\n\
       sctp_rr_request->test_length	=	test_trans * -1;
     }
     sctp_rr_request->non_blocking	= 	non_block;
+    sctp_rr_request->unordered		= 	unordered;
     sctp_rr_request->ipfamily           = af_to_nf(remote_res->ai_family);
 
     if (debug > 1) {
@@ -2882,7 +2889,7 @@ Send   Recv    Send   Recv\n\
  	if((len=sctp_sendmsg(send_socket,
  			     send_ring->buffer_ptr, req_size,
  			     NULL, 0,	/* don't need addrs with 1-to-1 */
- 			     0, 0, 0, 0, 0)) != req_size) {
+ 			     0, unordered, 0, 0, 0)) != req_size) {
 	  /* we should never hit the end of the test in the first burst */
 	  perror("send_sctp_rr: initial burst data send error");
 	  exit(1);
@@ -2904,7 +2911,7 @@ Send   Recv    Send   Recv\n\
       while ((len=sctp_sendmsg(send_socket,
 			       send_ring->buffer_ptr, req_size,
 			       NULL, 0, /* don't need addrs with 1-to-1 */
-			       0, 0, 0, 0, 0)) != req_size) {
+			       0, unordered, 0, 0, 0)) != req_size) {
 	if (non_block && errno == EAGAIN) {
 	    /* try sending again */
 	    continue;
@@ -3343,6 +3350,7 @@ recv_sctp_rr( void )
   loc_rcvavoid = sctp_rr_request->so_rcvavoid;
   loc_sndavoid = sctp_rr_request->so_sndavoid;
   non_block = sctp_rr_request->non_blocking;
+  unordered = sctp_rr_request->unordered;
 
   set_hostname_and_port(local_name,
 			port_buffer,
@@ -3522,7 +3530,7 @@ recv_sctp_rr( void )
 				    send_ring->buffer_ptr,
 				    sctp_rr_request->response_size,
 				    NULL, 0,
-				    0, 0, 0, 0, 0)) == -1) {
+				    0, unordered, 0, 0, 0)) == -1) {
       if (errno == EINTR) {
 	/* the test timer has popped */
 	timed_out = 1;
@@ -3807,6 +3815,7 @@ Send   Recv    Send   Recv\n\
 						* -1;
     }
     sctp_rr_request->non_blocking      = 	non_block;
+    sctp_rr_request->unordered		= 	unordered;
     sctp_rr_request->port              =       atoi(remote_data_port);
     sctp_rr_request->ipfamily          =       af_to_nf(remote_res->ai_family);
     if (debug > 1) {
@@ -3941,7 +3950,7 @@ Send   Recv    Send   Recv\n\
 			 send_ring->buffer_ptr, req_size,
 			 remote_res->ai_addr,
 			 remote_res->ai_addrlen,
-			 0, 0, 0, 0, 0)) != req_size) {
+			 0, unordered, 0, 0, 0)) != req_size) {
 	      /* we should never hit the end of the test in the first burst */
 	      perror("send_sctp_rr_1toMany: initial burst data send error");
 	      exit(1);
@@ -3973,7 +3982,7 @@ Send   Recv    Send   Recv\n\
 				 send_ring->buffer_ptr, req_size,
 				 remote_res->ai_addr,
 				 remote_res->ai_addrlen,
-				 0, 0, 0, 0, 0)) != req_size) {
+				 0, unordered, 0, 0, 0)) != req_size) {
 	  if (non_block && errno == EAGAIN) {
 	    /* try sending again */
 	    continue;
@@ -4387,6 +4396,7 @@ recv_sctp_rr_1toMany( void )
   loc_rcvavoid = sctp_rr_request->so_rcvavoid;
   loc_sndavoid = sctp_rr_request->so_sndavoid;
   non_block = sctp_rr_request->non_blocking;
+  unordered = sctp_rr_request->unordered;
 
   set_hostname_and_port(local_name,
 		        port_buffer,
@@ -4569,7 +4579,7 @@ recv_sctp_rr_1toMany( void )
 			      send_ring->buffer_ptr,
 			      sctp_rr_request->response_size,
 			      (struct sockaddr *)&peeraddr, addrlen,
-			      0, 0, 0, 0, 0)) == SOCKET_ERROR) {
+			      0, unordered, 0, 0, 0)) == SOCKET_ERROR) {
       if (SOCKET_EINTR(bytes_sent)) {
 	/* the test timer has popped */
 	timed_out = 1;
@@ -4663,7 +4673,7 @@ void
 scan_sctp_args( int argc, char *argv[] )
 {
 
-#define SOCKETS_ARGS "BDhH:I:L:m:M:P:r:s:S:VN:T:46"
+#define SOCKETS_ARGS "BDhH:I:L:m:M:P:r:s:S:VN:T:46U"
 
   extern char	*optarg;	  /* pointer to option string	*/
   
@@ -4837,6 +4847,9 @@ scan_sctp_args( int argc, char *argv[] )
 	  printf("Number of SCTP associations must be >= 1\n");
 	  exit(1);
       }
+      break;
+    case 'U':
+      unordered = SCTP_UNORDERED;
       break;
     };
   }

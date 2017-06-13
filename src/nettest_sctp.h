@@ -32,6 +32,7 @@ struct	sctp_stream_request_struct {
 			   to allow netperf to run through firewalls */
   int   ipfamily;	/* address family of ipaddress */
   int   non_blocking;   /* run the test in non-blocking mode */
+  int   unordered;      /* send data in (un)ordered mode */
 };
 
 struct	sctp_stream_response_struct {
@@ -78,6 +79,7 @@ struct	sctp_rr_request_struct {
 			   to allow netperf to run through firewalls */
   int   ipfamily;	/* address family of ipaddress */
   int   non_blocking;   /* run the test in non-blocking mode */
+  int   unordered;      /* send data in (un)ordered mode */
 };
 
 struct	sctp_rr_response_struct {
