@@ -105,6 +105,7 @@ static  int confidence_iteration;
 static  char  local_cpu_method;
 static  char  remote_cpu_method;
 static  unsigned int max_srtt;
+static  unsigned int max_cwnd;
 
 #ifdef WANT_HISTOGRAM
 static HIST time_hist;
@@ -767,17 +768,20 @@ Size (bytes)\n\
       }
 #endif /* WANT_INTERVALS */
 
-      if (track_path_info && !(nummessages % track_path_info)) {
+      if (track_path_info && !(nummessages % (track_path_info>0?:-track_path_info))) {
         len = getsockopt(send_socket, SOL_SCTP, SCTP_GET_PEER_ADDR_INFO,
 			 &pinfo, &optlen);
         if (len < 0) {
 	  perror("getsockopt");
         } else {
-	  fprintf(where, "srtt:%u rto:%u cwnd:%u\n",
-		  pinfo.spinfo_srtt, pinfo.spinfo_rto,
-		  pinfo.spinfo_cwnd);
+	  if (track_path_info < 0)
+	    fprintf(where, "srtt:%u rto:%u cwnd:%u\n",
+		    pinfo.spinfo_srtt, pinfo.spinfo_rto,
+		    pinfo.spinfo_cwnd);
 	  if (pinfo.spinfo_srtt > max_srtt)
 	    max_srtt = pinfo.spinfo_srtt;
+	  if (pinfo.spinfo_cwnd > max_cwnd)
+	    max_cwnd = pinfo.spinfo_cwnd;
         }
       }
 
@@ -1025,6 +1029,7 @@ Size (bytes)\n\
   }
   if (track_path_info) {
     fprintf(where, "Maximum SRTT: %u ms\n", max_srtt);
+    fprintf(where, "Maximum cwnd: %u bytes\n", max_cwnd);
   }
   
   /* it would be a good thing to include information about some of the */
@@ -4879,10 +4884,6 @@ scan_sctp_args( int argc, char *argv[] )
       break;
     case 'l':
       track_path_info = atoi(optarg);
-      if (track_path_info < 1) {
-	  printf("Number of messages for peer path tracking must be >= 1\n");
-	  exit(1);
-      }
       break;
     };
   }
