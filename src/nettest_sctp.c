@@ -1030,6 +1030,7 @@ Size (bytes)\n\
   if (track_path_info) {
     fprintf(where, "Maximum SRTT: %u ms\n", max_srtt);
     fprintf(where, "Maximum cwnd: %u bytes\n", max_cwnd);
+    fprintf(where, "cwnd time: %f ms\n", max_cwnd/(thruput*1000.0/8));
   }
   
   /* it would be a good thing to include information about some of the */
